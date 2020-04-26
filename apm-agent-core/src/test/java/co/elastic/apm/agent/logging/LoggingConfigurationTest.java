@@ -11,9 +11,9 @@
  * the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -29,6 +29,9 @@ import org.slf4j.impl.SimpleLogger;
 import org.stagemonitor.configuration.source.SimpleSource;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,6 +62,26 @@ class LoggingConfigurationTest {
         // re-configuring the log file does not actually work,
         // so we can't verify the content of the log file
         LoggingConfiguration.init(Collections.singletonList(new SimpleSource().add("log_file", "_AGENT_HOME_/logs/apm.log")));
+        assertThat(System.getProperty(SimpleLogger.LOG_FILE_KEY)).isEqualTo("System.out");
+    }
+
+    @Test
+    void testSetLogFileInNonWriteableDir() throws IOException {
+        Path logDirPath = Files.createTempDirectory("testSetLogFileInNonWriteableDir");
+        File logDir = logDirPath.toFile();
+        String logFile = Files.createTempFile(logDirPath, "test_log.log", null).toString();
+        logDir.setReadOnly();
+        LoggingConfiguration.init(Collections.singletonList(new SimpleSource().add("log_file", logFile)));
+        assertThat(System.getProperty(SimpleLogger.LOG_FILE_KEY)).isEqualTo(logFile);
+    }
+
+    @Test
+    void testNonWriteableFile() throws IOException {
+        Path logDirPath = Files.createTempDirectory("testNonWriteableFile");
+        Path logFilePath = Files.createTempFile(logDirPath, "test_log.log", null);
+        logFilePath.toFile().setReadOnly();
+        String logFile = logFilePath.toString();
+        LoggingConfiguration.init(Collections.singletonList(new SimpleSource().add("log_file", logFile)));
         assertThat(System.getProperty(SimpleLogger.LOG_FILE_KEY)).isEqualTo("System.out");
     }
 }
